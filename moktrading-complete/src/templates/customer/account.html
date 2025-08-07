@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-user"></i> My Account</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('customer.account') }}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-user-circle"></i> Profile
+                    </a>
+                    <a href="{{ url_for('customer.orders') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-shopping-bag"></i> My Orders
+                    </a>
+                    <a href="{{ url_for('customer.cart') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-shopping-cart"></i> Shopping Cart
+                    </a>
+                    <a href="{{ url_for('auth.profile') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-cog"></i> Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Account Information</h5>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    {% if current_user %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Personal Information</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Name:</strong></td>
+                                    <td>{{ current_user.first_name }} {{ current_user.last_name }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Username:</strong></td>
+                                    <td>{{ current_user.username }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Email:</strong></td>
+                                    <td>{{ current_user.email }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Phone:</strong></td>
+                                    <td>{{ current_user.phone or 'Not provided' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Member Since:</strong></td>
+                                    <td>{{ current_user.created_at.strftime('%B %Y') if current_user.created_at else 'N/A' }}</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h6 class="text-muted">Address Information</h6>
+                            <table class="table table-borderless">
+                                <tr>
+                                    <td><strong>Address:</strong></td>
+                                    <td>{{ current_user.address or 'Not provided' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>City:</strong></td>
+                                    <td>{{ current_user.city or 'Not provided' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>State:</strong></td>
+                                    <td>{{ current_user.state or 'Not provided' }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ZIP Code:</strong></td>
+                                    <td>{{ current_user.zip_code or 'Not provided' }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-md-12">
+                            <h6 class="text-muted">Account Statistics</h6>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <i class="fas fa-shopping-bag fa-2x text-primary mb-2"></i>
+                                            <h5>{{ user_orders|length if user_orders else 0 }}</h5>
+                                            <p class="text-muted">Total Orders</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <i class="fas fa-dollar-sign fa-2x text-success mb-2"></i>
+                                            <h5>${{ "%.2f"|format(total_spent) if total_spent else "0.00" }}</h5>
+                                            <p class="text-muted">Total Spent</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <i class="fas fa-shopping-cart fa-2x text-warning mb-2"></i>
+                                            <h5>{{ cart_items|length if cart_items else 0 }}</h5>
+                                            <p class="text-muted">Cart Items</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="card text-center">
+                                        <div class="card-body">
+                                            <i class="fas fa-star fa-2x text-info mb-2"></i>
+                                            <h5>{{ 'VIP' if total_spent and total_spent > 500 else 'Regular' }}</h5>
+                                            <p class="text-muted">Status</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <a href="{{ url_for('auth.profile') }}" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Edit Profile
+                        </a>
+                        <a href="{{ url_for('customer.orders') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-shopping-bag"></i> View Orders
+                        </a>
+                    </div>
+
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-user-slash fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">Not Logged In</h4>
+                        <p class="text-muted">Please log in to view your account information</p>
+                        <a href="{{ url_for('auth.login') }}" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt"></i> Login
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-primary {
+    background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #A0522D 0%, #8B4513 100%);
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.list-group-item.active {
+    background-color: #8B4513;
+    border-color: #8B4513;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.table-borderless td {
+    border: none;
+    padding: 0.5rem 0;
+}
+</style>
+{% endblock %}
+

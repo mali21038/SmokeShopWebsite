@@ -1,0 +1,493 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-shopping-cart"></i> Shopping Cart</h5>
+                </div>
+                <div class="card-body">
+                    {% if cart_items %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Price</th>
+                                    <th>Quantity</th>
+                                    <th>Total</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in cart_items %}
+                                <tr id="cart-item-{{ item.id }}">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if item.product.image_filename %}
+                                            <img src="{{ url_for('static', filename='uploads/' + item.product.image_filename) }}" 
+                                                 class="cart-item-image me-3" alt="{{ item.product.name }}">
+                                            {% else %}
+                                            <div class="cart-item-placeholder me-3">
+                                                <i class="fas fa-image"></i>
+                                            </div>
+                                            {% endif %}
+                                            <div>
+                                                <h6 class="mb-0">{{ item.product.name }}</h6>
+                                                <small class="text-muted">{{ item.product.brand }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="align-middle">
+                                        <span class="fw-bold">${{ "%.2f"|format(item.product.price) }}</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        <div class="input-group" style="width: 120px;">
+                                            <button class="btn btn-outline-secondary btn-sm" type="button" 
+                                                    onclick="updateQuantityFromInput({{ item.id }}, -1)">
+                                                <i class="fas fa-minus"></i>
+                                            </button>
+                                            <input type="number" class="form-control text-center" id="qty-{{ item.id }}"
+                                                   value="{{ item.quantity }}" min="1" max="{{ item.product.stock_quantity }}"
+                                                   onchange="updateQuantity({{ item.id }}, this.value)">
+                                            <button class="btn btn-outline-secondary btn-sm" type="button"
+                                                    onclick="updateQuantityFromInput({{ item.id }}, 1)">
+                                                <i class="fas fa-plus"></i>
+                                            </button>
+                                        </div>
+                                        <small class="text-muted d-block">{{ item.product.stock_quantity }} available</small>
+                                    </td>
+                                    <td class="align-middle">
+                                        <span class="fw-bold text-primary item-total">${{ "%.2f"|format(item.quantity * item.product.price) }}</span>
+                                    </td>
+                                    <td class="align-middle">
+                                        <button class="btn btn-outline-danger btn-sm" 
+                                                onclick="removeFromCart({{ item.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-3">
+                        <a href="{{ url_for('customer.products') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left"></i> Continue Shopping
+                        </a>
+                        <button class="btn btn-outline-secondary" onclick="clearCart()">
+                            <i class="fas fa-trash"></i> Clear Cart
+                        </button>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">Your cart is empty</h4>
+                        <p class="text-muted">Add some products to get started</p>
+                        <a href="{{ url_for('customer.products') }}" class="btn btn-primary">
+                            <i class="fas fa-shopping-bag"></i> Shop Now
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        {% if cart_items %}
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-calculator"></i> Order Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal ({{ cart_items|length }} items):</span>
+                        <span id="subtotal">${{ "%.2f"|format(cart_subtotal) }}</span>
+                    </div>
+                    
+                    {% if tax_summary %}
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Excise Tax ({{ user_state }}):</span>
+                        <span id="excise-tax">${{ "%.2f"|format(tax_summary.total_excise_tax) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Sales Tax ({{ user_state }}):</span>
+                        <span id="sales-tax">${{ "%.2f"|format(tax_summary.total_sales_tax) }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span><strong>Total Tax:</strong></span>
+                        <span id="total-tax"><strong>${{ "%.2f"|format(tax_summary.total_tax) }}</strong></span>
+                    </div>
+                    {% else %}
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Tax:</span>
+                        <span id="tax">$0.00</span>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Shipping:</span>
+                        <span class="text-success">Free</span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between mb-3">
+                        <strong>Total:</strong>
+                        <strong class="text-primary" id="total">${{ "%.2f"|format(cart_total) }}</strong>
+                    </div>
+                    
+                    {% if tax_summary %}
+                    <div class="alert alert-info alert-sm">
+                        <small><i class="fas fa-info-circle"></i> 
+                        Taxes calculated for {{ user_state }}. 
+                        {% if tax_summary.total_excise_tax > 0 %}
+                        Includes tobacco excise taxes.
+                        {% endif %}
+                        </small>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('customer.checkout') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-credit-card"></i> Proceed to Checkout
+                        </a>
+                        <button class="btn btn-outline-success" onclick="saveForLater()">
+                            <i class="fas fa-heart"></i> Save for Later
+                        </button>
+                    </div>
+                    
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <h6 class="mb-2"><i class="fas fa-shield-alt text-success"></i> Secure Checkout</h6>
+                        <small class="text-muted">
+                            Your payment information is encrypted and secure. 
+                            We accept all major credit cards and PayPal.
+                        </small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recommended Products -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-star"></i> You might also like</h6>
+                </div>
+                <div class="card-body">
+                    {% if recommended_products %}
+                    {% for product in recommended_products[:3] %}
+                    <div class="d-flex align-items-center mb-3">
+                        {% if product.image_filename %}
+                        <img src="{{ url_for('static', filename='uploads/' + product.image_filename) }}" 
+                             class="recommended-image me-3" alt="{{ product.name }}">
+                        {% else %}
+                        <div class="recommended-placeholder me-3">
+                            <i class="fas fa-image"></i>
+                        </div>
+                        {% endif %}
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">{{ product.name }}</h6>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-primary fw-bold">${{ "%.2f"|format(product.price) }}</span>
+                                <button class="btn btn-outline-primary btn-sm" 
+                                        onclick="addToCart({{ product.id }})">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted text-center">No recommendations available</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.cart-item-image {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.cart-item-placeholder {
+    width: 60px;
+    height: 60px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+}
+
+.recommended-image {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 6px;
+}
+
+.recommended-placeholder {
+    width: 50px;
+    height: 50px;
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #A0522D 0%, #8B4513 100%);
+}
+
+.input-group .btn {
+    border-color: #ced4da;
+}
+
+.table td {
+    vertical-align: middle;
+}
+</style>
+
+<script>
+function updateQuantityFromInput(itemId, change) {
+    const input = document.getElementById(`qty-${itemId}`);
+    if (!input) return;
+    
+    const currentValue = parseInt(input.value) || 1;
+    const newValue = Math.max(1, currentValue + change);
+    
+    // Update the input field
+    input.value = newValue;
+    
+    // Call the update function
+    updateQuantity(itemId, newValue);
+}
+
+function updateQuantity(itemId, newQuantity) {
+    if (newQuantity < 1) {
+        removeFromCart(itemId);
+        return;
+    }
+    
+    fetch('/cart/update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            item_id: itemId,
+            quantity: parseInt(newQuantity)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update the item total
+            const row = document.getElementById(`cart-item-${itemId}`);
+            const itemTotal = row.querySelector('.item-total');
+            itemTotal.textContent = `$${data.item_total.toFixed(2)}`;
+            
+            // Update cart totals with proper tax information
+            updateCartTotals(data);
+            updateCartCount();
+            showToast('Cart updated!', 'success');
+        } else {
+            showToast(data.message || 'Error updating cart', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error updating cart', 'error');
+    });
+}
+
+function removeFromCart(itemId) {
+    if (!confirm('Remove this item from your cart?')) {
+        return;
+    }
+    
+    fetch('/cart/remove', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            item_id: itemId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Remove the row
+            const row = document.getElementById(`cart-item-${itemId}`);
+            row.remove();
+            
+            // Update cart totals
+            updateCartTotals(data.cart_total);
+            updateCartCount();
+            showToast('Item removed from cart', 'success');
+            
+            // Reload page if cart is empty
+            if (data.cart_total === 0) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            }
+        } else {
+            showToast(data.message || 'Error removing item', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error removing item', 'error');
+    });
+}
+
+function clearCart() {
+    if (!confirm('Remove all items from your cart?')) {
+        return;
+    }
+    
+    fetch('/cart/clear', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.reload();
+        } else {
+            showToast(data.message || 'Error clearing cart', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error clearing cart', 'error');
+    });
+}
+
+function addToCart(productId) {
+    fetch('/cart/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            product_id: productId,
+            quantity: 1
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateCartCount();
+            showToast('Product added to cart!', 'success');
+        } else {
+            showToast(data.message || 'Error adding to cart', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error adding to cart', 'error');
+    });
+}
+
+function saveForLater() {
+    showToast('Save for later feature coming soon!', 'info');
+}
+
+function updateCartTotals(data) {
+    // Update subtotal
+    const subtotalElement = document.getElementById('subtotal');
+    if (subtotalElement) {
+        subtotalElement.textContent = `$${data.cart_subtotal.toFixed(2)}`;
+    }
+    
+    // Update item count in subtotal text
+    const subtotalLabel = subtotalElement ? subtotalElement.parentElement.querySelector('span:first-child') : null;
+    if (subtotalLabel) {
+        subtotalLabel.textContent = `Subtotal (${data.item_count} items):`;
+    }
+    
+    // Update tax information if available
+    if (data.excise_tax !== undefined) {
+        const exciseTaxElement = document.getElementById('excise-tax');
+        if (exciseTaxElement) {
+            exciseTaxElement.textContent = `$${data.excise_tax.toFixed(2)}`;
+        }
+    }
+    
+    if (data.sales_tax !== undefined) {
+        const salesTaxElement = document.getElementById('sales-tax');
+        if (salesTaxElement) {
+            salesTaxElement.textContent = `$${data.sales_tax.toFixed(2)}`;
+        }
+    }
+    
+    if (data.total_tax !== undefined) {
+        const totalTaxElement = document.getElementById('total-tax');
+        if (totalTaxElement) {
+            totalTaxElement.textContent = `$${data.total_tax.toFixed(2)}`;
+        }
+    }
+    
+    // Update final total
+    const totalElement = document.getElementById('total');
+    if (totalElement) {
+        totalElement.textContent = `$${data.cart_total.toFixed(2)}`;
+    }
+    
+    // Update cart badge in navigation
+    const cartLink = document.querySelector('a[href*="cart"]');
+    if (cartLink && data.item_count !== undefined) {
+        const cartText = cartLink.textContent.replace(/\d+/, data.item_count);
+        cartLink.textContent = cartText;
+    }
+}
+
+function updateCartCount() {
+    fetch('/cart/count')
+        .then(response => response.json())
+        .then(data => {
+            const cartBadge = document.querySelector('.cart-count');
+            if (cartBadge) {
+                cartBadge.textContent = data.count;
+            }
+        });
+}
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.remove();
+        }
+    }, 3000);
+}
+</script>
+{% endblock %}
+

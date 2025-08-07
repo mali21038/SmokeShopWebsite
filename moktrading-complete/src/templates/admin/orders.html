@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-shopping-cart"></i> Order Management</h2>
+                <div class="btn-group">
+                    <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-primary {{ 'active' if not status_filter }}">All Orders</a>
+                    <a href="{{ url_for('admin.orders', status='pending') }}" class="btn btn-outline-warning {{ 'active' if status_filter == 'pending' }}">Pending</a>
+                    <a href="{{ url_for('admin.orders', status='processing') }}" class="btn btn-outline-info {{ 'active' if status_filter == 'processing' }}">Processing</a>
+                    <a href="{{ url_for('admin.orders', status='completed') }}" class="btn btn-outline-success {{ 'active' if status_filter == 'completed' }}">Completed</a>
+                </div>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <!-- Order Statistics -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-shopping-cart fa-2x text-primary mb-2"></i>
+                            <h4>{{ total_orders }}</h4>
+                            <p class="text-muted">Total Orders</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                            <h4>{{ pending_orders }}</h4>
+                            <p class="text-muted">Pending Orders</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                            <h4>{{ completed_orders }}</h4>
+                            <p class="text-muted">Completed Orders</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-dollar-sign fa-2x text-info mb-2"></i>
+                            <h4>${{ "%.2f"|format(orders.items|sum(attribute='total_amount') if orders.items else 0) }}</h4>
+                            <p class="text-muted">Total Revenue</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        {% if status_filter %}
+                            {{ status_filter.title() }} Orders
+                        {% else %}
+                            All Orders
+                        {% endif %}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if orders.items %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Date</th>
+                                    <th>Items</th>
+                                    <th>Total</th>
+                                    <th>Payment</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders.items %}
+                                <tr>
+                                    <td><strong>#{{ order.id }}</strong></td>
+                                    <td>
+                                        {% if order.user %}
+                                            {{ order.user.first_name }} {{ order.user.last_name }}<br>
+                                            <small class="text-muted">{{ order.user.email }}</small>
+                                        {% else %}
+                                            <span class="text-muted">Guest Order</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else 'N/A' }}</td>
+                                    <td>
+                                        <span class="badge bg-info">{{ order.order_items|length }} items</span>
+                                    </td>
+                                    <td><strong>${{ "%.2f"|format(order.total_amount) }}</strong></td>
+                                    <td>
+                                        {% if order.payment_method %}
+                                            <span class="badge bg-{{ 'success' if order.payment_status == 'paid' else 'warning' }}">
+                                                {{ order.payment_method.title() }}
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set status_colors = {
+                                            'pending': 'warning',
+                                            'processing': 'info', 
+                                            'shipped': 'primary',
+                                            'delivered': 'success',
+                                            'cancelled': 'danger'
+                                        } %}
+                                        <span class="badge bg-{{ status_colors.get(order.status, 'secondary') }}">
+                                            {{ order.status.title() if order.status else 'Unknown' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if orders.pages > 1 %}
+                    <nav aria-label="Orders pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if orders.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.orders', page=orders.prev_num, status=status_filter) }}">Previous</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for page_num in orders.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != orders.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin.orders', page=page_num, status=status_filter) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">...</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if orders.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin.orders', page=orders.next_num, status=status_filter) }}">Next</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">No orders found</h4>
+                        <p class="text-muted">
+                            {% if status_filter %}
+                                No {{ status_filter }} orders at the moment
+                            {% else %}
+                                No orders have been placed yet
+                            {% endif %}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-primary {
+    background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #A0522D 0%, #8B4513 100%);
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-top: none;
+}
+
+.badge {
+    font-size: 0.75rem;
+}
+
+.btn-group .btn.active {
+    background-color: #8B4513;
+    border-color: #8B4513;
+    color: white;
+}
+</style>
+{% endblock %}
+

@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-md-2 bg-dark text-white p-0">
+            <div class="admin-sidebar">
+                <div class="sidebar-header p-3">
+                    <h5><i class="fas fa-cog"></i> Admin Panel</h5>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link text-white" href="{{ url_for('admin.dashboard') }}">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('admin.products') }}">
+                        <i class="fas fa-box"></i> Products
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('admin.orders') }}">
+                        <i class="fas fa-shopping-cart"></i> Orders
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('admin.customers') }}">
+                        <i class="fas fa-users"></i> Customers
+                    </a>
+                    <a class="nav-link text-white active" href="{{ url_for('admin.financial_dashboard') }}">
+                        <i class="fas fa-chart-line"></i> Financial
+                    </a>
+                    <hr class="bg-secondary">
+                    <a class="nav-link text-white" href="{{ url_for('customer.home') }}">
+                        <i class="fas fa-store"></i> View Store
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('auth.logout') }}">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-10">
+            <div class="admin-content p-4">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="fw-bold mb-1">Financial Dashboard</h2>
+                        <p class="text-muted mb-0">Weekly financial overview and payment tracking</p>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-success fs-6">Week: {{ week_start.strftime('%b %d') }} - {{ week_end.strftime('%b %d, %Y') }}</span>
+                    </div>
+                </div>
+
+                <!-- Financial Summary Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card text-center border-success">
+                            <div class="card-body">
+                                <i class="fas fa-money-bill-wave fa-2x text-success mb-2"></i>
+                                <h4 class="fw-bold text-success">${{ "%.2f"|format(cash_payments) }}</h4>
+                                <small class="text-muted">Cash Payments</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center border-info">
+                            <div class="card-body">
+                                <i class="fas fa-credit-card fa-2x text-info mb-2"></i>
+                                <h4 class="fw-bold text-info">${{ "%.2f"|format(credit_payments) }}</h4>
+                                <small class="text-muted">Credit Payments</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center border-warning">
+                            <div class="card-body">
+                                <i class="fas fa-clock fa-2x text-warning mb-2"></i>
+                                <h4 class="fw-bold text-warning">${{ "%.2f"|format(unpaid_amount) }}</h4>
+                                <small class="text-muted">Unpaid Orders</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center border-primary">
+                            <div class="card-body">
+                                <i class="fas fa-chart-line fa-2x text-primary mb-2"></i>
+                                <h4 class="fw-bold text-primary">${{ "%.2f"|format(monthly_revenue) }}</h4>
+                                <small class="text-muted">Monthly Revenue</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weekly Orders Overview -->
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-calendar-week"></i> This Week's Orders
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                {% if weekly_orders %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Order #</th>
+                                                <th>Customer</th>
+                                                <th>Amount</th>
+                                                <th>Payment</th>
+                                                <th>Status</th>
+                                                <th>Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for order in weekly_orders[:10] %}
+                                            <tr>
+                                                <td>
+                                                    <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" class="text-decoration-none">
+                                                        #{{ order.order_number }}
+                                                    </a>
+                                                </td>
+                                                <td>{{ order.user.first_name }} {{ order.user.last_name }}</td>
+                                                <td><strong>${{ "%.2f"|format(order.total_amount) }}</strong></td>
+                                                <td>
+                                                    {% if order.payment_method == 'cash' %}
+                                                        <span class="badge bg-success">Cash</span>
+                                                    {% elif order.payment_method == 'credit' %}
+                                                        <span class="badge bg-info">Credit</span>
+                                                    {% else %}
+                                                        <span class="badge bg-warning">Pending</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if order.status == 'completed' %}
+                                                        <span class="badge bg-success">{{ order.status.title() }}</span>
+                                                    {% elif order.status == 'processing' %}
+                                                        <span class="badge bg-info">{{ order.status.title() }}</span>
+                                                    {% else %}
+                                                        <span class="badge bg-warning">{{ order.status.title() }}</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ order.created_at.strftime('%m/%d %H:%M') }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% if weekly_orders|length > 10 %}
+                                <div class="text-center mt-3">
+                                    <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-primary btn-sm">
+                                        View All {{ weekly_orders|length }} Orders
+                                    </a>
+                                </div>
+                                {% endif %}
+                                {% else %}
+                                <div class="text-center py-4">
+                                    <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">No orders this week</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-star"></i> Top Products This Week
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                {% if top_products %}
+                                <div class="list-group list-group-flush">
+                                    {% for product in top_products %}
+                                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                        <div>
+                                            <div class="fw-bold">{{ product[0] }}</div>
+                                            <small class="text-muted">{{ product[1] }} sold</small>
+                                        </div>
+                                        <span class="badge bg-primary rounded-pill">${{ "%.2f"|format(product[2]) }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                <div class="text-center py-3">
+                                    <i class="fas fa-chart-bar fa-2x text-muted mb-2"></i>
+                                    <p class="text-muted mb-0">No sales this week</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-exclamation-triangle"></i> Unpaid Orders
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                {% if unpaid_orders %}
+                                <div class="list-group list-group-flush">
+                                    {% for order in unpaid_orders[:5] %}
+                                    <div class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                        <div>
+                                            <div class="fw-bold">#{{ order.order_number }}</div>
+                                            <small class="text-muted">{{ order.user.first_name }} {{ order.user.last_name }}</small>
+                                        </div>
+                                        <span class="text-warning fw-bold">${{ "%.2f"|format(order.total_amount) }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% if unpaid_orders|length > 5 %}
+                                <div class="text-center mt-2">
+                                    <small class="text-muted">+{{ unpaid_orders|length - 5 }} more unpaid orders</small>
+                                </div>
+                                {% endif %}
+                                {% else %}
+                                <div class="text-center py-3">
+                                    <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
+                                    <p class="text-muted mb-0">All orders paid!</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-tools"></i> Quick Actions
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-primary w-100 mb-2">
+                                    <i class="fas fa-list"></i> View All Orders
+                                </a>
+                            </div>
+                            <div class="col-md-3">
+                                <a href="{{ url_for('admin.customers') }}" class="btn btn-outline-success w-100 mb-2">
+                                    <i class="fas fa-users"></i> Manage Customers
+                                </a>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-info w-100 mb-2" onclick="generateReport()">
+                                    <i class="fas fa-file-export"></i> Generate Report
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-warning w-100 mb-2" onclick="testNotifications()">
+                                    <i class="fas fa-bell"></i> Test Notifications
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-sidebar {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+}
+
+.admin-sidebar .nav-link {
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.3s ease;
+}
+
+.admin-sidebar .nav-link:hover,
+.admin-sidebar .nav-link.active {
+    background-color: rgba(255,255,255,0.1);
+    border-left: 4px solid #FFA500;
+}
+
+.admin-content {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+
+.border-success { border-left: 4px solid #28a745 !important; }
+.border-info { border-left: 4px solid #17a2b8 !important; }
+.border-warning { border-left: 4px solid #ffc107 !important; }
+.border-primary { border-left: 4px solid #007bff !important; }
+</style>
+
+<script>
+function generateReport() {
+    // Simulate report generation
+    alert('📊 Weekly report will be generated and sent to your email and WhatsApp!');
+}
+
+function testNotifications() {
+    // Simulate notification test
+    alert('🧪 Test notifications sent to mali21038@gmail.com and WhatsApp 3022578521');
+}
+</script>
+{% endblock %}
+

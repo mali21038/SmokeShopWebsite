@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-2">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0"><i class="fas fa-user-shield"></i> Admin Panel</h6>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                    <a href="{{ url_for('admin.products') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-box"></i> Products
+                    </a>
+                    <a href="{{ url_for('admin.categories') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-tags"></i> Categories
+                    </a>
+                    <a href="{{ url_for('admin.orders') }}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-shopping-cart"></i> Orders
+                    </a>
+                    <a href="{{ url_for('admin.customers') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-users"></i> Customers
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Order Details</h2>
+                <div>
+                    <button onclick="printOrder()" class="btn btn-success me-2">
+                        <i class="fas fa-print"></i> Print Order
+                    </button>
+                    <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Orders
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-receipt"></i> Order #{{ order.id }}</h5>
+                            <span class="badge bg-{% if order.status == 'pending' %}warning{% elif order.status == 'processing' %}info{% elif order.status == 'shipped' %}primary{% elif order.status == 'delivered' %}success{% else %}danger{% endif %}">
+                                {{ order.status.title() }}
+                            </span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <h6 class="text-muted">Order Information</h6>
+                                    <p><strong>Order Number:</strong> {{ order.order_number }}</p>
+                                    <p><strong>Order Date:</strong> {{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                                    <p><strong>Payment Method:</strong> {{ order.payment_method.replace('_', ' ').title() }}</p>
+                                    {% if order.tax_state %}
+                                    <p><strong>Tax State:</strong> {{ order.tax_state }}</p>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-6">
+                                    <h6 class="text-muted">Customer Information</h6>
+                                    <p><strong>Customer:</strong> {{ order.user.first_name }} {{ order.user.last_name }}</p>
+                                    <p><strong>Email:</strong> {{ order.user.email }}</p>
+                                    <p><strong>Phone:</strong> {{ order.user.phone or 'Not provided' }}</p>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h6 class="text-muted">Shipping Address</h6>
+                                <p>{{ order.shipping_address|replace('\n', '<br>')|safe }}</p>
+                            </div>
+
+                            {% if order.notes %}
+                            <div class="mb-4">
+                                <h6 class="text-muted">Order Notes</h6>
+                                <p class="text-muted">{{ order.notes }}</p>
+                            </div>
+                            {% endif %}
+
+                            <h6 class="text-muted mb-3">Order Items</h6>
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Product</th>
+                                            <th>Price</th>
+                                            <th>Quantity</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in order.items %}
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    {% if item.product.image_filename %}
+                                                    <img src="{{ url_for('static', filename='uploads/' + item.product.image_filename) }}" 
+                                                         class="me-3" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;" 
+                                                         alt="{{ item.product.name }}">
+                                                    {% else %}
+                                                    <div class="me-3" style="width: 50px; height: 50px; background-color: #f8f9fa; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+                                                        <i class="fas fa-image text-muted"></i>
+                                                    </div>
+                                                    {% endif %}
+                                                    <div>
+                                                        <h6 class="mb-0">{{ item.product.name }}</h6>
+                                                        <small class="text-muted">{{ item.product.brand }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="align-middle">${{ "%.2f"|format(item.price) }}</td>
+                                            <td class="align-middle">{{ item.quantity }}</td>
+                                            <td class="align-middle">${{ "%.2f"|format(item.quantity * item.price) }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Order Summary -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-calculator"></i> Order Summary</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Subtotal:</span>
+                                <span>${{ "%.2f"|format(order.subtotal) }}</span>
+                            </div>
+                            
+                            {% if order.excise_tax and order.excise_tax > 0 %}
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Excise Tax{% if order.tax_state %} ({{ order.tax_state }}){% endif %}:</span>
+                                <span>${{ "%.2f"|format(order.excise_tax) }}</span>
+                            </div>
+                            {% endif %}
+                            
+                            {% if order.sales_tax and order.sales_tax > 0 %}
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Sales Tax{% if order.tax_state %} ({{ order.tax_state }}){% endif %}:</span>
+                                <span>${{ "%.2f"|format(order.sales_tax) }}</span>
+                            </div>
+                            {% endif %}
+                            
+                            {% if order.total_tax and order.total_tax > 0 %}
+                            <div class="d-flex justify-content-between mb-2">
+                                <span><strong>Total Tax:</strong></span>
+                                <span><strong>${{ "%.2f"|format(order.total_tax) }}</strong></span>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Shipping:</span>
+                                <span class="text-success">Free</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between mb-3">
+                                <strong>Total:</strong>
+                                <strong class="text-primary">${{ "%.2f"|format(order.total_amount) }}</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Order Status Update -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-edit"></i> Update Status</h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('admin.update_order_status', order_id=order.id) }}">
+                                <div class="mb-3">
+                                    <label for="status" class="form-label">Order Status</label>
+                                    <select class="form-select" id="status" name="status" required>
+                                        <option value="pending" {% if order.status == 'pending' %}selected{% endif %}>Pending</option>
+                                        <option value="processing" {% if order.status == 'processing' %}selected{% endif %}>Processing</option>
+                                        <option value="shipped" {% if order.status == 'shipped' %}selected{% endif %}>Shipped</option>
+                                        <option value="delivered" {% if order.status == 'delivered' %}selected{% endif %}>Delivered</option>
+                                        <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-save"></i> Update Status
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Order Actions -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-cogs"></i> Actions</h6>
+                        </div>
+                        <div class="card-body">
+                            <button class="btn btn-outline-primary w-100 mb-2" onclick="printOrder()">
+                                <i class="fas fa-print"></i> Print Order
+                            </button>
+                            <button class="btn btn-outline-info w-100 mb-2" onclick="sendNotification()">
+                                <i class="fas fa-bell"></i> Send Notification
+                            </button>
+                            {% if order.status == 'pending' %}
+                            <button class="btn btn-outline-danger w-100" onclick="cancelOrder()">
+                                <i class="fas fa-times"></i> Cancel Order
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-primary {
+    background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #A0522D 0%, #8B4513 100%);
+    transform: translateY(-1px);
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.list-group-item.active {
+    background-color: #8B4513;
+    border-color: #8B4513;
+}
+
+.badge {
+    font-size: 0.8rem;
+}
+</style>
+
+<script>
+function sendNotification() {
+    if (confirm('Send order notification to customer?')) {
+        fetch(`/admin/orders/{{ order.id }}/notify`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Notification sent successfully!');
+            } else {
+                alert(data.message || 'Error sending notification');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error sending notification');
+        });
+    }
+}
+
+function cancelOrder() {
+    if (confirm('Are you sure you want to cancel this order?')) {
+        fetch(`/admin/orders/{{ order.id }}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert(data.message || 'Error canceling order');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error canceling order');
+        });
+    }
+}
+
+function printOrder() {
+    // Create a simplified print version by cloning the current page content
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    
+    const printContent = `
+        <html>
+        <head>
+            <title>Order #{{ order.order_number }}</title>
+            <style>
+                body { 
+                    font-family: Arial, sans-serif; 
+                    margin: 20px; 
+                    line-height: 1.4;
+                    color: #333;
+                }
+                .header { 
+                    text-align: center; 
+                    margin-bottom: 30px; 
+                    border-bottom: 2px solid #333; 
+                    padding-bottom: 15px; 
+                }
+                .header h1 {
+                    margin: 0;
+                    color: #8B4513;
+                    font-size: 28px;
+                }
+                .customer-info { 
+                    margin-bottom: 25px; 
+                    background-color: #f9f9f9;
+                    padding: 15px;
+                    border-radius: 5px;
+                }
+                .items-table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    margin-bottom: 20px; 
+                }
+                .items-table th, .items-table td { 
+                    border: 1px solid #ddd; 
+                    padding: 10px; 
+                    text-align: left; 
+                }
+                .items-table th { 
+                    background-color: #8B4513; 
+                    color: white;
+                    font-weight: bold;
+                }
+                .total-section { 
+                    text-align: right; 
+                    margin-top: 20px; 
+                    font-size: 16px;
+                }
+                .payment-info { 
+                    margin-top: 25px; 
+                    padding: 15px; 
+                    background-color: #f0f8ff; 
+                    border: 1px solid #8B4513; 
+                    border-radius: 5px;
+                }
+                @media print { 
+                    body { margin: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>🍃 MokTrading</h1>
+                <h2>Order #{{ order.order_number }}</h2>
+                <p><strong>Date:</strong> {{ order.created_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+            </div>
+            
+            <div class="customer-info">
+                <h3>📋 Customer Information</h3>
+                <p><strong>Name:</strong> {{ order.user.first_name }} {{ order.user.last_name }}</p>
+                <p><strong>Email:</strong> {{ order.user.email }}</p>
+                <p><strong>Phone:</strong> {{ order.user.phone or 'Not provided' }}</p>
+                <p><strong>Shipping Address:</strong><br>{{ order.shipping_address|replace('\n', '<br>')|safe }}</p>
+            </div>
+            
+            <h3>🛒 Order Items</h3>
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Brand</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in order.items %}
+                    <tr>
+                        <td>{{ item.product.name }}</td>
+                        <td>{{ item.product.brand }}</td>
+                        <td>${{ "%.2f"|format(item.price) }}</td>
+                        <td>{{ item.quantity }}</td>
+                        <td>${{ "%.2f"|format(item.quantity * item.price) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div class="total-section">
+                <p><strong>Subtotal: ${{ "%.2f"|format(order.subtotal) }}</strong></p>
+                {% if order.excise_tax and order.excise_tax > 0 %}
+                <p>Excise Tax{% if order.tax_state %} ({{ order.tax_state }}){% endif %}: ${{ "%.2f"|format(order.excise_tax) }}</p>
+                {% endif %}
+                {% if order.sales_tax and order.sales_tax > 0 %}
+                <p>Sales Tax{% if order.tax_state %} ({{ order.tax_state }}){% endif %}: ${{ "%.2f"|format(order.sales_tax) }}</p>
+                {% endif %}
+                <h3>💰 Total: ${{ "%.2f"|format(order.total_amount) }}</h3>
+            </div>
+            
+            <div class="payment-info">
+                <h3>💳 Payment Information</h3>
+                <p><strong>Payment Method:</strong> {{ order.payment_method.replace('_', ' ').title() }}</p>
+                <p><strong>Payment Status:</strong> {{ order.payment_status.replace('_', ' ').title() }}</p>
+                <p><strong>Order Status:</strong> {{ order.status.title() }}</p>
+                {% if order.notes %}
+                <p><strong>Notes:</strong> {{ order.notes }}</p>
+                {% endif %}
+            </div>
+            
+            <div style="margin-top: 30px; text-align: center; color: #666; font-size: 12px;">
+                <p>Thank you for your business!</p>
+                <p>MokTrading - Premium Tobacco Products</p>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    // Wait for content to load, then print
+    setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+    }, 500);
+}
+</script>
+{% endblock %}

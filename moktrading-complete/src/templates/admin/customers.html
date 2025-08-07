@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Admin Sidebar -->
+        <div class="col-md-2 bg-dark text-white p-0">
+            <div class="admin-sidebar">
+                <div class="sidebar-header p-3">
+                    <h5><i class="fas fa-cog"></i> Admin Panel</h5>
+                </div>
+                <nav class="nav flex-column">
+                    <a class="nav-link text-white" href="{{ url_for('admin.dashboard') }}">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('admin.products') }}">
+                        <i class="fas fa-box"></i> Products
+                    </a>
+                    <a class="nav-link text-white" href="#categories">
+                        <i class="fas fa-tags"></i> Categories
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('admin.orders') }}">
+                        <i class="fas fa-shopping-cart"></i> Orders
+                    </a>
+                    <a class="nav-link text-white active" href="{{ url_for('admin.customers') }}">
+                        <i class="fas fa-users"></i> Customers
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('admin.financial_dashboard') }}">
+                        <i class="fas fa-chart-line"></i> Financial
+                    </a>
+                    <hr class="bg-secondary">
+                    <a class="nav-link text-white" href="{{ url_for('customer.home') }}">
+                        <i class="fas fa-store"></i> View Store
+                    </a>
+                    <a class="nav-link text-white" href="{{ url_for('auth.logout') }}">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-10">
+            <div class="admin-content p-4">
+                <!-- Header -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2 class="fw-bold mb-1">Customer Management</h2>
+                        <p class="text-muted mb-0">View and manage customer accounts and activities</p>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-primary fs-6">{{ customer_stats|length }} Total Customers</span>
+                    </div>
+                </div>
+
+                <!-- Customer Statistics Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                                <h4 class="fw-bold">{{ customer_stats|length }}</h4>
+                                <small class="text-muted">Total Customers</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-shopping-cart fa-2x text-success mb-2"></i>
+                                <h4 class="fw-bold">{{ customer_stats|selectattr('cart_items_count', 'gt', 0)|list|length }}</h4>
+                                <small class="text-muted">Active Carts</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-receipt fa-2x text-warning mb-2"></i>
+                                <h4 class="fw-bold">{{ customer_stats|sum(attribute='total_orders') }}</h4>
+                                <small class="text-muted">Total Orders</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center">
+                            <div class="card-body">
+                                <i class="fas fa-dollar-sign fa-2x text-info mb-2"></i>
+                                <h4 class="fw-bold">${{ "%.2f"|format(customer_stats|sum(attribute='total_spent')) }}</h4>
+                                <small class="text-muted">Total Revenue</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customers Table -->
+                <div class="card">
+                    <div class="card-header bg-white border-0 py-3">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <h6 class="mb-0">All Customers</h6>
+                            </div>
+                            <div class="col-auto">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" class="form-control" placeholder="Search customers..." id="customerSearch">
+                                    <button class="btn btn-outline-secondary" type="button">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Customer</th>
+                                    <th>Email</th>
+                                    <th>Phone</th>
+                                    <th>Cart Items</th>
+                                    <th>Cart Total</th>
+                                    <th>Orders</th>
+                                    <th>Total Spent</th>
+                                    <th>Last Order</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for stat in customer_stats %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center me-2">
+                                                <span class="text-white fw-bold">{{ stat.customer.first_name[0] }}{{ stat.customer.last_name[0] }}</span>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold">{{ stat.customer.first_name }} {{ stat.customer.last_name }}</div>
+                                                <small class="text-muted">Joined {{ stat.customer.created_at.strftime('%b %d, %Y') }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ stat.customer.email }}</td>
+                                    <td>{{ stat.customer.phone or 'N/A' }}</td>
+                                    <td>
+                                        {% if stat.cart_items_count > 0 %}
+                                            <span class="badge bg-success">{{ stat.cart_items_count }} items</span>
+                                        {% else %}
+                                            <span class="text-muted">Empty</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if stat.cart_total > 0 %}
+                                            <strong>${{ "%.2f"|format(stat.cart_total) }}</strong>
+                                        {% else %}
+                                            <span class="text-muted">$0.00</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if stat.total_orders > 0 %}
+                                            <span class="badge bg-info">{{ stat.total_orders }}</span>
+                                        {% else %}
+                                            <span class="text-muted">0</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if stat.total_spent > 0 %}
+                                            <strong class="text-success">${{ "%.2f"|format(stat.total_spent) }}</strong>
+                                        {% else %}
+                                            <span class="text-muted">$0.00</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if stat.last_order %}
+                                            <small>{{ stat.last_order.created_at.strftime('%b %d, %Y') }}</small>
+                                        {% else %}
+                                            <span class="text-muted">Never</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('admin.customer_detail', customer_id=stat.customer.id) }}" 
+                                               class="btn btn-outline-primary" title="View Details">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if stat.cart_items_count > 0 %}
+                                            <a href="{{ url_for('admin.customer_cart', customer_id=stat.customer.id) }}" 
+                                               class="btn btn-outline-success" title="View Cart">
+                                                <i class="fas fa-shopping-cart"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-sidebar {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+}
+
+.admin-sidebar .nav-link {
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    transition: all 0.3s ease;
+}
+
+.admin-sidebar .nav-link:hover,
+.admin-sidebar .nav-link.active {
+    background-color: rgba(255,255,255,0.1);
+    border-left: 4px solid #FFA500;
+}
+
+.admin-content {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border-radius: 8px;
+}
+
+.avatar-sm {
+    width: 40px;
+    height: 40px;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+}
+</style>
+
+<script>
+// Customer search functionality
+document.getElementById('customerSearch').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    const rows = document.querySelectorAll('tbody tr');
+    
+    rows.forEach(row => {
+        const customerName = row.querySelector('td:first-child .fw-bold').textContent.toLowerCase();
+        const email = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+        
+        if (customerName.includes(searchTerm) || email.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+</script>
+{% endblock %}
+

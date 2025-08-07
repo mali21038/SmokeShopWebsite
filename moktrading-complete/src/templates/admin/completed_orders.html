@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-2">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h6 class="mb-0"><i class="fas fa-user-shield"></i> Admin Panel</h6>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{{ url_for('admin.dashboard') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                    <a href="{{ url_for('admin.products') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-box"></i> Products
+                    </a>
+                    <a href="{{ url_for('admin.categories') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-tags"></i> Categories
+                    </a>
+                    <a href="{{ url_for('admin.orders') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-shopping-cart"></i> Orders
+                    </a>
+                    <a href="{{ url_for('admin.completed_orders') }}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-check-circle"></i> Completed Orders
+                    </a>
+                    <a href="{{ url_for('admin.customers') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-users"></i> Customers
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-check-circle text-success"></i> Completed Orders</h2>
+                <div>
+                    <button class="btn btn-outline-primary" onclick="exportToCSV()">
+                        <i class="fas fa-download"></i> Export CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-filter"></i> Filter Orders</h5>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin.completed_orders') }}" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="filter" class="form-label">Time Period</label>
+                            <select class="form-select" id="filter" name="filter" onchange="toggleCustomDates()">
+                                <option value="all" {% if filter_type == 'all' %}selected{% endif %}>All Time</option>
+                                <option value="today" {% if filter_type == 'today' %}selected{% endif %}>Today</option>
+                                <option value="week" {% if filter_type == 'week' %}selected{% endif %}>This Week</option>
+                                <option value="month" {% if filter_type == 'month' %}selected{% endif %}>This Month</option>
+                                <option value="custom" {% if filter_type == 'custom' %}selected{% endif %}>Custom Range</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3" id="start-date-group" style="display: {% if filter_type == 'custom' %}block{% else %}none{% endif %};">
+                            <label for="start_date" class="form-label">Start Date</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date" value="{{ start_date }}">
+                        </div>
+                        
+                        <div class="col-md-3" id="end-date-group" style="display: {% if filter_type == 'custom' %}block{% else %}none{% endif %};">
+                            <label for="end_date" class="form-label">End Date</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date" value="{{ end_date }}">
+                        </div>
+                        
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-search"></i> Apply Filter
+                            </button>
+                            <a href="{{ url_for('admin.completed_orders') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times"></i> Clear
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Total Orders</h6>
+                                    <h3 class="mb-0">{{ total_orders }}</h3>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-shopping-cart fa-2x"></i>
+                                </div>
+                            </div>
+                            <small>{{ filter_label }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Total Revenue</h6>
+                                    <h3 class="mb-0">${{ "%.2f"|format(total_revenue) }}</h3>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-dollar-sign fa-2x"></i>
+                                </div>
+                            </div>
+                            <small>{{ filter_label }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Avg Order Value</h6>
+                                    <h3 class="mb-0">${{ "%.2f"|format(avg_order_value) }}</h3>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-chart-line fa-2x"></i>
+                                </div>
+                            </div>
+                            <small>{{ filter_label }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Cash Sales</h6>
+                                    <h3 class="mb-0">${{ "%.2f"|format(payment_breakdown.cash) }}</h3>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="fas fa-money-bill fa-2x"></i>
+                                </div>
+                            </div>
+                            <small>{{ filter_label }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Method Breakdown -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-credit-card"></i> Payment Method Breakdown</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-success">${{ "%.2f"|format(payment_breakdown.cash) }}</h4>
+                                <p class="mb-0">💵 Cash</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-primary">${{ "%.2f"|format(payment_breakdown.credit) }}</h4>
+                                <p class="mb-0">💳 Credit/Card</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-info">${{ "%.2f"|format(payment_breakdown.check) }}</h4>
+                                <p class="mb-0">📝 Check</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-warning">${{ "%.2f"|format(payment_breakdown.next_time) }}</h4>
+                                <p class="mb-0">⏰ Next Time</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders Table -->
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Orders List</h5>
+                    <span class="badge bg-success">{{ orders.total }} Total Orders</span>
+                </div>
+                <div class="card-body">
+                    {% if orders.items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Order #</th>
+                                    <th>Customer</th>
+                                    <th>Date</th>
+                                    <th>Items</th>
+                                    <th>Payment Method</th>
+                                    <th>Total</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for order in orders.items %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ order.order_number }}</strong>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            <strong>{{ order.user.first_name }} {{ order.user.last_name }}</strong>
+                                            <br><small class="text-muted">{{ order.user.email }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div>
+                                            {{ order.created_at.strftime('%m/%d/%Y') }}
+                                            <br><small class="text-muted">{{ order.created_at.strftime('%I:%M %p') }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ order.items|length }} items</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{% if order.payment_method == 'cash' %}success{% elif order.payment_method == 'card' %}primary{% elif order.payment_method == 'check' %}info{% else %}warning{% endif %}">
+                                            {{ order.payment_method.replace('_', ' ').title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong class="text-success">${{ "%.2f"|format(order.total_amount) }}</strong>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ url_for('admin.order_detail', order_id=order.id) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i> View
+                                            </a>
+                                            <button class="btn btn-sm btn-outline-success" 
+                                                    onclick="printOrderQuick({{ order.id }})">
+                                                <i class="fas fa-print"></i> Print
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    {% if orders.pages > 1 %}
+                    <nav aria-label="Orders pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if orders.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.completed_orders', page=orders.prev_num, filter=filter_type, start_date=start_date, end_date=end_date) }}">Previous</a>
+                            </li>
+                            {% endif %}
+                            
+                            {% for page_num in orders.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != orders.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('admin.completed_orders', page=page_num, filter=filter_type, start_date=start_date, end_date=end_date) }}">{{ page_num }}</a>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                    {% endif %}
+                                {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if orders.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('admin.completed_orders', page=orders.next_num, filter=filter_type, start_date=start_date, end_date=end_date) }}">Next</a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                    
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No completed orders found</h5>
+                        <p class="text-muted">Try adjusting your filter criteria.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.btn-primary {
+    background: linear-gradient(135deg, #8B4513 0%, #A0522D 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #A0522D 0%, #8B4513 100%);
+    transform: translateY(-1px);
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.list-group-item.active {
+    background-color: #8B4513;
+    border-color: #8B4513;
+}
+
+.badge {
+    font-size: 0.8rem;
+}
+
+.table th {
+    border-top: none;
+    font-weight: 600;
+    color: #8B4513;
+}
+</style>
+
+<script>
+function toggleCustomDates() {
+    const filter = document.getElementById('filter').value;
+    const startDateGroup = document.getElementById('start-date-group');
+    const endDateGroup = document.getElementById('end-date-group');
+    
+    if (filter === 'custom') {
+        startDateGroup.style.display = 'block';
+        endDateGroup.style.display = 'block';
+    } else {
+        startDateGroup.style.display = 'none';
+        endDateGroup.style.display = 'none';
+    }
+}
+
+function printOrderQuick(orderId) {
+    window.open(`/admin/orders/${orderId}`, '_blank');
+}
+
+function exportToCSV() {
+    // Get current filter parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const filter = urlParams.get('filter') || 'all';
+    const startDate = urlParams.get('start_date') || '';
+    const endDate = urlParams.get('end_date') || '';
+    
+    // Create CSV content
+    let csvContent = "Order Number,Customer Name,Customer Email,Date,Payment Method,Total Amount\\n";
+    
+    // Get table data
+    const rows = document.querySelectorAll('tbody tr');
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 6) {
+            const orderNumber = cells[0].textContent.trim();
+            const customerName = cells[1].querySelector('strong').textContent.trim();
+            const customerEmail = cells[1].querySelector('small').textContent.trim();
+            const date = cells[2].textContent.trim().replace('\\n', ' ');
+            const paymentMethod = cells[4].textContent.trim();
+            const total = cells[5].textContent.trim();
+            
+            csvContent += `"${orderNumber}","${customerName}","${customerEmail}","${date}","${paymentMethod}","${total}"\\n`;
+        }
+    });
+    
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `completed_orders_${filter}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+{% endblock %}
+
